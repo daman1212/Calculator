@@ -1,0 +1,851 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Calculator</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --c1: #7c3aed;
+  --c2: #2563eb;
+  --c3: #06b6d4;
+  --orange: #f97316;
+  --red: #ef4444;
+  --green: #10b981;
+  --glass: rgba(255,255,255,0.08);
+  --glass-border: rgba(255,255,255,0.15);
+  --glass-hover: rgba(255,255,255,0.14);
+  --text: rgba(255,255,255,0.95);
+  --muted: rgba(255,255,255,0.45);
+  --r: 18px;
+}
+
+*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+html, body { height:100%; overflow:hidden; }
+
+body {
+  font-family: 'Outfit', sans-serif;
+  background: #0d0221;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  overflow: hidden;
+  position: relative;
+}
+
+/* ── ANIMATED BACKGROUND ── */
+.bg {
+  position: fixed; inset: 0; z-index: 0;
+  background: linear-gradient(135deg, #0d0221 0%, #1a0533 40%, #0a1628 100%);
+  overflow: hidden;
+}
+.orb {
+  position: absolute; border-radius: 50%;
+  filter: blur(80px); opacity: 0.55;
+  animation: drift 12s ease-in-out infinite;
+}
+.orb1 { width:480px; height:480px; background:radial-gradient(circle,#7c3aed,transparent); top:-120px; left:-120px; animation-delay:0s; }
+.orb2 { width:400px; height:400px; background:radial-gradient(circle,#2563eb,transparent); bottom:-80px; right:-80px; animation-delay:-4s; }
+.orb3 { width:300px; height:300px; background:radial-gradient(circle,#06b6d4,transparent); top:40%; left:50%; transform:translate(-50%,-50%); animation-delay:-8s; }
+
+@keyframes drift {
+  0%,100% { transform: translate(0,0) scale(1); }
+  33%      { transform: translate(30px,-20px) scale(1.05); }
+  66%      { transform: translate(-20px,25px) scale(0.97); }
+}
+
+/* noise */
+.bg::after {
+  content:''; position:absolute; inset:0;
+  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+  opacity:0.4; pointer-events:none;
+}
+
+/* ── MAIN LAYOUT ── */
+#app {
+  position: relative; z-index: 10;
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  padding: 20px;
+  max-width: 1100px;
+  width: 100%;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* ── CALCULATOR PANEL ── */
+#calc {
+  background: rgba(255,255,255,0.07);
+  backdrop-filter: blur(32px);
+  -webkit-backdrop-filter: blur(32px);
+  border: 1px solid var(--glass-border);
+  border-radius: 28px;
+  padding: 20px;
+  width: 340px;
+  flex-shrink: 0;
+  box-shadow: 0 32px 80px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.15);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* ── MODE TABS ── */
+.mode-tabs {
+  display: flex;
+  background: rgba(0,0,0,0.25);
+  border-radius: 12px;
+  padding: 3px;
+  gap: 3px;
+}
+.mode-tab {
+  flex: 1; padding: 7px; border: none; background: transparent;
+  color: var(--muted); font-family:'Outfit',sans-serif; font-size:0.75rem; font-weight:600;
+  border-radius: 9px; cursor: pointer; transition: all 0.2s; letter-spacing:0.05em;
+}
+.mode-tab.active { background: rgba(124,58,237,0.6); color: white; box-shadow: 0 2px 8px rgba(124,58,237,0.4); }
+
+/* ── DISPLAY ── */
+.display {
+  background: rgba(0,0,0,0.3);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: var(--r);
+  padding: 18px 20px 14px;
+  min-height: 96px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 4px;
+  position: relative;
+  overflow: hidden;
+}
+.display::before {
+  content:''; position:absolute; top:0; left:0; right:0; height:1px;
+  background: linear-gradient(90deg, transparent, rgba(124,58,237,0.6), transparent);
+}
+#expr {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.82rem; color: var(--muted);
+  text-align: right; min-height: 18px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+#result {
+  font-family: 'DM Mono', monospace;
+  font-size: 2.4rem; font-weight: 500;
+  text-align: right; line-height: 1.1;
+  letter-spacing: -0.02em;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  transition: font-size 0.15s;
+}
+#result.small { font-size: 1.6rem; }
+#result.xsmall { font-size: 1.2rem; }
+
+/* ── BUTTONS ── */
+.btn-grid {
+  display: grid;
+  gap: 8px;
+}
+.btn-grid.basic  { grid-template-columns: repeat(4,1fr); }
+.btn-grid.sci    { grid-template-columns: repeat(5,1fr); }
+
+.cbtn {
+  height: 58px;
+  border: none; border-radius: 14px;
+  font-family: 'Outfit', sans-serif; font-size: 1rem; font-weight: 500;
+  cursor: pointer; transition: all 0.12s;
+  background: var(--glass);
+  color: var(--text);
+  border: 1px solid rgba(255,255,255,0.08);
+  position: relative; overflow: hidden;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+.cbtn::after {
+  content:''; position:absolute; inset:0;
+  background: radial-gradient(circle at var(--mx,50%) var(--my,50%), rgba(255,255,255,0.15), transparent 60%);
+  opacity: 0; transition: opacity 0.2s;
+  pointer-events: none;
+}
+.cbtn:hover { background: var(--glass-hover); transform: translateY(-1px); box-shadow: 0 4px 16px rgba(0,0,0,0.3); }
+.cbtn:hover::after { opacity: 1; }
+.cbtn:active { transform: scale(0.95) translateY(0); }
+
+/* sci buttons smaller */
+.btn-grid.sci .cbtn { height: 48px; font-size: 0.78rem; border-radius: 10px; font-weight:500; }
+
+.cbtn.op   { background: rgba(124,58,237,0.25); border-color: rgba(124,58,237,0.4); color: #c4b5fd; }
+.cbtn.op:hover { background: rgba(124,58,237,0.4); }
+.cbtn.eq   { background: linear-gradient(135deg,#7c3aed,#2563eb); border-color:transparent; color:white; box-shadow:0 4px 20px rgba(124,58,237,0.5); }
+.cbtn.eq:hover { box-shadow:0 6px 28px rgba(124,58,237,0.7); transform:translateY(-2px); }
+.cbtn.clear { background: rgba(239,68,68,0.2); border-color:rgba(239,68,68,0.35); color:#fca5a5; }
+.cbtn.clear:hover { background: rgba(239,68,68,0.35); }
+.cbtn.del  { background: rgba(249,115,22,0.2); border-color:rgba(249,115,22,0.35); color:#fdba74; }
+.cbtn.del:hover { background: rgba(249,115,22,0.35); }
+.cbtn.fn   { background: rgba(6,182,212,0.15); border-color:rgba(6,182,212,0.3); color:#67e8f9; font-size:0.72rem; }
+.cbtn.fn:hover { background: rgba(6,182,212,0.28); }
+.cbtn.span2 { grid-column: span 2; }
+
+/* ── SIDE PANELS ── */
+.side-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  height: calc(100vh - 40px);
+  overflow: hidden;
+}
+
+.panel-box {
+  background: rgba(255,255,255,0.06);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid var(--glass-border);
+  border-radius: 24px;
+  padding: 18px;
+  box-shadow: 0 16px 48px rgba(0,0,0,0.3);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.panel-title {
+  font-size: 0.72rem; font-weight: 700;
+  letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--muted); margin-bottom: 14px;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.panel-title button {
+  background: rgba(239,68,68,0.2); border: 1px solid rgba(239,68,68,0.3);
+  color: #fca5a5; padding: 3px 10px; border-radius: 6px;
+  font-size: 0.68rem; font-weight: 600; cursor: pointer;
+  font-family: 'Outfit', sans-serif;
+  transition: background 0.15s;
+}
+.panel-title button:hover { background: rgba(239,68,68,0.35); }
+
+/* History */
+#historyBox { flex: 1; overflow-y: auto; }
+#historyBox::-webkit-scrollbar { width: 3px; }
+#historyBox::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 2px; }
+
+.hist-item {
+  padding: 10px 12px;
+  border-radius: 12px;
+  margin-bottom: 6px;
+  background: rgba(0,0,0,0.2);
+  border: 1px solid rgba(255,255,255,0.06);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.hist-item:hover { background: rgba(124,58,237,0.2); border-color: rgba(124,58,237,0.3); }
+.hist-expr { font-size: 0.72rem; color: var(--muted); font-family:'DM Mono',monospace; }
+.hist-res  { font-size: 1rem; font-weight: 600; font-family:'DM Mono',monospace; color: #c4b5fd; }
+.hist-empty { text-align:center; color:var(--muted); font-size:0.8rem; padding:30px 0; }
+
+/* Graph */
+#graphBox { flex: 2; min-height: 0; }
+#graphCanvas {
+  width: 100%; flex: 1;
+  border-radius: 12px;
+  background: rgba(0,0,0,0.2);
+}
+.graph-controls {
+  display: flex; gap: 8px; margin-bottom: 10px; flex-wrap: wrap;
+}
+.graph-input {
+  flex: 1; min-width: 120px;
+  background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1);
+  color: white; padding: 7px 12px; border-radius: 9px;
+  font-family: 'DM Mono',monospace; font-size: 0.8rem; outline: none;
+  transition: border-color 0.2s;
+}
+.graph-input:focus { border-color: rgba(124,58,237,0.6); }
+.graph-btn {
+  padding: 7px 14px; background: rgba(124,58,237,0.4);
+  border: 1px solid rgba(124,58,237,0.5); color: white;
+  border-radius: 9px; font-size: 0.78rem; font-weight: 600;
+  cursor: pointer; font-family:'Outfit',sans-serif; transition: background 0.15s;
+}
+.graph-btn:hover { background: rgba(124,58,237,0.6); }
+
+/* ── BACK LINK ── */
+#backLink {
+  position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%);
+  color: rgba(255,255,255,0.2); font-size: 0.7rem;
+  text-decoration: none; letter-spacing: 0.05em; z-index: 20;
+  transition: color 0.2s;
+}
+#backLink:hover { color: rgba(255,255,255,0.5); }
+
+/* ════════════════════════════
+   MOBILE
+════════════════════════════ */
+@media (max-width: 700px) {
+  html, body { overflow: auto; height: auto; }
+
+  #app {
+    flex-direction: column;
+    align-items: stretch;
+    height: auto;
+    overflow: visible;
+    padding: 12px 12px 80px;
+    gap: 12px;
+  }
+
+  #calc {
+    width: 100%;
+    border-radius: 24px;
+    padding: 16px;
+  }
+
+  .cbtn { height: 64px; font-size: 1.1rem; border-radius: 16px; }
+  .btn-grid.sci .cbtn { height: 44px; font-size: 0.7rem; }
+  #result { font-size: 2.6rem; }
+
+  .side-panel {
+    height: auto;
+    overflow: visible;
+  }
+
+  .panel-box {
+    border-radius: 20px;
+  }
+
+  #historyBox { max-height: 220px; }
+
+  #graphBox { min-height: 0; }
+  #graphCanvas { height: 220px !important; }
+
+  #backLink { bottom: 20px; }
+}
+
+/* tablet */
+@media (min-width: 701px) and (max-width: 900px) {
+  #calc { width: 300px; }
+  .cbtn { height: 52px; font-size: 0.9rem; }
+}
+</style>
+</head>
+<body>
+
+<div class="bg">
+  <div class="orb orb1"></div>
+  <div class="orb orb2"></div>
+  <div class="orb orb3"></div>
+</div>
+
+<div id="app">
+
+  <!-- ── CALCULATOR ── -->
+  <div id="calc">
+
+    <!-- Mode tabs -->
+    <div class="mode-tabs">
+      <button class="mode-tab active" onclick="setMode('basic')" id="tab-basic">Basic</button>
+      <button class="mode-tab" onclick="setMode('sci')"   id="tab-sci">Scientific</button>
+    </div>
+
+    <!-- Display -->
+    <div class="display">
+      <div id="expr"></div>
+      <div id="result">0</div>
+    </div>
+
+    <!-- Basic buttons -->
+    <div class="btn-grid basic" id="basicGrid">
+      <button class="cbtn clear" onclick="clearAll()">AC</button>
+      <button class="cbtn del"   onclick="delChar()">⌫</button>
+      <button class="cbtn fn"    onclick="pct()">%</button>
+      <button class="cbtn op"    onclick="inp('/')">÷</button>
+
+      <button class="cbtn" onclick="inp('7')">7</button>
+      <button class="cbtn" onclick="inp('8')">8</button>
+      <button class="cbtn" onclick="inp('9')">9</button>
+      <button class="cbtn op" onclick="inp('*')">×</button>
+
+      <button class="cbtn" onclick="inp('4')">4</button>
+      <button class="cbtn" onclick="inp('5')">5</button>
+      <button class="cbtn" onclick="inp('6')">6</button>
+      <button class="cbtn op" onclick="inp('-')">−</button>
+
+      <button class="cbtn" onclick="inp('1')">1</button>
+      <button class="cbtn" onclick="inp('2')">2</button>
+      <button class="cbtn" onclick="inp('3')">3</button>
+      <button class="cbtn op" onclick="inp('+')">+</button>
+
+      <button class="cbtn" onclick="toggleSign()">+/−</button>
+      <button class="cbtn" onclick="inp('0')">0</button>
+      <button class="cbtn" onclick="inp('.')">.</button>
+      <button class="cbtn eq" onclick="calculate()">=</button>
+    </div>
+
+    <!-- Scientific buttons (hidden by default) -->
+    <div class="btn-grid sci" id="sciGrid" style="display:none">
+      <button class="cbtn fn" onclick="sciOp('sin')">sin</button>
+      <button class="cbtn fn" onclick="sciOp('cos')">cos</button>
+      <button class="cbtn fn" onclick="sciOp('tan')">tan</button>
+      <button class="cbtn fn" onclick="sciOp('log')">log</button>
+      <button class="cbtn fn" onclick="sciOp('ln')">ln</button>
+
+      <button class="cbtn fn" onclick="sciOp('sqrt')">√</button>
+      <button class="cbtn fn" onclick="sciOp('sq')">x²</button>
+      <button class="cbtn fn" onclick="sciOp('cube')">x³</button>
+      <button class="cbtn fn" onclick="inp('^')">xʸ</button>
+      <button class="cbtn fn" onclick="sciOp('inv')">1/x</button>
+
+      <button class="cbtn fn" onclick="sciOp('abs')">|x|</button>
+      <button class="cbtn fn" onclick="inp('π')">π</button>
+      <button class="cbtn fn" onclick="inp('e')">e</button>
+      <button class="cbtn fn" onclick="inp('(')"> ( </button>
+      <button class="cbtn fn" onclick="inp(')')"> ) </button>
+
+      <button class="cbtn clear" onclick="clearAll()">AC</button>
+      <button class="cbtn del"   onclick="delChar()">⌫</button>
+      <button class="cbtn fn"    onclick="pct()">%</button>
+      <button class="cbtn op"    onclick="inp('/')">÷</button>
+      <button class="cbtn op"    onclick="inp('*')">×</button>
+
+      <button class="cbtn" onclick="inp('7')">7</button>
+      <button class="cbtn" onclick="inp('8')">8</button>
+      <button class="cbtn" onclick="inp('9')">9</button>
+      <button class="cbtn op" onclick="inp('-')">−</button>
+      <button class="cbtn op" onclick="inp('+')">+</button>
+
+      <button class="cbtn" onclick="inp('4')">4</button>
+      <button class="cbtn" onclick="inp('5')">5</button>
+      <button class="cbtn" onclick="inp('6')">6</button>
+      <button class="cbtn" onclick="inp('1')">1</button>
+      <button class="cbtn" onclick="inp('2')">2</button>
+
+      <button class="cbtn" onclick="inp('3')">3</button>
+      <button class="cbtn" onclick="toggleSign()">+/−</button>
+      <button class="cbtn" onclick="inp('0')">0</button>
+      <button class="cbtn" onclick="inp('.')">.</button>
+      <button class="cbtn eq" onclick="calculate()">=</button>
+    </div>
+
+  </div><!-- end #calc -->
+
+  <!-- ── SIDE PANELS ── -->
+  <div class="side-panel">
+
+    <!-- History -->
+    <div class="panel-box" style="flex:1;min-height:0">
+      <div class="panel-title">
+        History
+        <button onclick="clearHistory()">Clear</button>
+      </div>
+      <div id="historyBox">
+        <div class="hist-empty" id="histEmpty">No calculations yet</div>
+      </div>
+    </div>
+
+    <!-- Graph -->
+    <div class="panel-box" id="graphBox" style="flex:2;min-height:0">
+      <div class="panel-title">Graph Plotter</div>
+      <div class="graph-controls">
+        <input class="graph-input" id="fnInput" placeholder="e.g. x^2 or sin(x)" value="x^2">
+        <input class="graph-input" id="xMin" value="-10" style="width:54px;flex:none">
+        <input class="graph-input" id="xMax" value="10"  style="width:54px;flex:none">
+        <button class="graph-btn" onclick="plotGraph()">Plot</button>
+      </div>
+      <canvas id="graphCanvas"></canvas>
+    </div>
+
+  </div>
+
+</div><!-- end #app -->
+
+<a href="../../../portfolio/index.html" id="backLink">← Back to Portfolio</a>
+
+<script>
+// ══════════════════════════════════════
+//  STATE
+// ══════════════════════════════════════
+let expr    = '';
+let history = JSON.parse(localStorage.getItem('calcHistory') || '[]');
+let mode    = 'basic';
+
+const exprEl   = document.getElementById('expr');
+const resultEl = document.getElementById('result');
+
+// ══════════════════════════════════════
+//  MODE
+// ══════════════════════════════════════
+function setMode(m) {
+  mode = m;
+  document.getElementById('basicGrid').style.display = m==='basic' ? 'grid' : 'none';
+  document.getElementById('sciGrid').style.display   = m==='sci'   ? 'grid' : 'none';
+  document.getElementById('tab-basic').classList.toggle('active', m==='basic');
+  document.getElementById('tab-sci').classList.toggle('active',   m==='sci');
+}
+
+// ══════════════════════════════════════
+//  INPUT
+// ══════════════════════════════════════
+function inp(v) {
+  if (v === 'π') v = Math.PI.toString();
+  if (v === 'e') v = Math.E.toString();
+  expr += v;
+  updateDisplay();
+  ripple(event);
+}
+
+function clearAll() {
+  expr = '';
+  exprEl.textContent = '';
+  resultEl.textContent = '0';
+  resultEl.className = '';
+}
+
+function delChar() {
+  expr = expr.slice(0, -1);
+  updateDisplay();
+}
+
+function pct() {
+  try {
+    const val = safeEval(expr);
+    expr = String(val / 100);
+    updateDisplay();
+  } catch(e) {}
+}
+
+function toggleSign() {
+  try {
+    const val = safeEval(expr);
+    expr = String(-val);
+    updateDisplay();
+  } catch(e) {}
+}
+
+function sciOp(op) {
+  try {
+    const val = safeEval(expr || '0');
+    const ops = {
+      sin:  v => Math.sin(v * Math.PI/180),
+      cos:  v => Math.cos(v * Math.PI/180),
+      tan:  v => Math.tan(v * Math.PI/180),
+      log:  v => Math.log10(v),
+      ln:   v => Math.log(v),
+      sqrt: v => Math.sqrt(v),
+      sq:   v => v * v,
+      cube: v => v * v * v,
+      inv:  v => 1 / v,
+      abs:  v => Math.abs(v),
+    };
+    const res = ops[op](val);
+    const label = `${op}(${fmt(val)})`;
+    addHistory(label, fmt(res));
+    exprEl.textContent = label + ' =';
+    expr = String(res);
+    showResult(fmt(res));
+  } catch(e) {
+    showResult('Error');
+  }
+}
+
+// ══════════════════════════════════════
+//  CALCULATE
+// ══════════════════════════════════════
+function calculate() {
+  if (!expr) return;
+  try {
+    const res = safeEval(expr);
+    const display = fmt(res);
+    addHistory(expr, display);
+    exprEl.textContent = expr + ' =';
+    expr = String(res);
+    showResult(display);
+  } catch(e) {
+    showResult('Error');
+    expr = '';
+  }
+}
+
+function safeEval(e) {
+  // Replace display symbols
+  let s = e
+    .replace(/×/g,'*').replace(/÷/g,'/')
+    .replace(/−/g,'-').replace(/\^/g,'**')
+    .replace(/π/g, Math.PI)
+    .replace(/\be\b/g, Math.E);
+  // Security: only allow safe chars
+  if (!/^[0-9+\-*/.() ]+$/.test(s)) throw new Error('Invalid');
+  return Function('"use strict"; return (' + s + ')')();
+}
+
+function fmt(n) {
+  if (isNaN(n) || !isFinite(n)) return 'Error';
+  if (Number.isInteger(n)) return n.toString();
+  // Round to 10 sig figs
+  const s = parseFloat(n.toPrecision(10)).toString();
+  return s;
+}
+
+// ══════════════════════════════════════
+//  DISPLAY
+// ══════════════════════════════════════
+function updateDisplay() {
+  exprEl.textContent = expr
+    .replace(/\*/g,'×').replace(/\//g,'÷');
+  // Live preview
+  try {
+    if (expr) {
+      const r = fmt(safeEval(expr));
+      showResult(r);
+    } else {
+      showResult('0');
+    }
+  } catch(e) {
+    showResult(expr ? '…' : '0');
+  }
+}
+
+function showResult(val) {
+  resultEl.textContent = val;
+  const l = val.length;
+  resultEl.className = l > 14 ? 'xsmall' : l > 10 ? 'small' : '';
+}
+
+// ══════════════════════════════════════
+//  HISTORY
+// ══════════════════════════════════════
+function addHistory(expr, res) {
+  history.unshift({ expr, res, time: Date.now() });
+  if (history.length > 50) history.pop();
+  localStorage.setItem('calcHistory', JSON.stringify(history));
+  renderHistory();
+}
+
+function renderHistory() {
+  const box = document.getElementById('historyBox');
+  const empty = document.getElementById('histEmpty');
+  if (history.length === 0) {
+    empty.style.display = 'block';
+    // Remove all hist-items
+    box.querySelectorAll('.hist-item').forEach(e=>e.remove());
+    return;
+  }
+  empty.style.display = 'none';
+  box.querySelectorAll('.hist-item').forEach(e=>e.remove());
+  history.forEach(h => {
+    const d = document.createElement('div');
+    d.className = 'hist-item';
+    d.innerHTML = `<div class="hist-expr">${h.expr.replace(/\*/g,'×').replace(/\//g,'÷')}</div><div class="hist-res">= ${h.res}</div>`;
+    d.onclick = () => { expr = h.res; updateDisplay(); };
+    box.appendChild(d);
+  });
+}
+
+function clearHistory() {
+  history = [];
+  localStorage.removeItem('calcHistory');
+  renderHistory();
+}
+
+// ══════════════════════════════════════
+//  KEYBOARD
+// ══════════════════════════════════════
+document.addEventListener('keydown', e => {
+  if (e.key >= '0' && e.key <= '9') inp(e.key);
+  else if (e.key === '.') inp('.');
+  else if (e.key === '+') inp('+');
+  else if (e.key === '-') inp('-');
+  else if (e.key === '*') inp('*');
+  else if (e.key === '/') { e.preventDefault(); inp('/'); }
+  else if (e.key === 'Enter' || e.key === '=') calculate();
+  else if (e.key === 'Backspace') delChar();
+  else if (e.key === 'Escape') clearAll();
+  else if (e.key === '(') inp('(');
+  else if (e.key === ')') inp(')');
+  else if (e.key === '^') inp('^');
+});
+
+// ══════════════════════════════════════
+//  RIPPLE EFFECT
+// ══════════════════════════════════════
+function ripple(e) {
+  if (!e || !e.currentTarget) return;
+  const btn = e.currentTarget;
+  const rect = btn.getBoundingClientRect();
+  const mx = ((e.clientX || rect.left+rect.width/2) - rect.left) / rect.width * 100;
+  const my = ((e.clientY || rect.top+rect.height/2) - rect.top) / rect.height * 100;
+  btn.style.setProperty('--mx', mx + '%');
+  btn.style.setProperty('--my', my + '%');
+}
+document.querySelectorAll('.cbtn').forEach(btn => {
+  btn.addEventListener('click', ripple);
+});
+
+// ══════════════════════════════════════
+//  GRAPH PLOTTER
+// ══════════════════════════════════════
+function plotGraph() {
+  const canvas = document.getElementById('graphCanvas');
+  const ctx = canvas.getContext('2d');
+  const box = document.getElementById('graphBox');
+
+  // Size canvas to its container
+  const cw = canvas.parentElement.clientWidth - 36;
+  const ch = Math.max(180, box.clientHeight - 120);
+  canvas.width = cw;
+  canvas.height = ch;
+
+  const fnStr = document.getElementById('fnInput').value.trim();
+  const xMin  = parseFloat(document.getElementById('xMin').value) || -10;
+  const xMax  = parseFloat(document.getElementById('xMax').value) || 10;
+
+  // Build safe function
+  let fn;
+  try {
+    const safe = fnStr
+      .replace(/\^/g,'**')
+      .replace(/sin/g,'Math.sin')
+      .replace(/cos/g,'Math.cos')
+      .replace(/tan/g,'Math.tan')
+      .replace(/sqrt/g,'Math.sqrt')
+      .replace(/log/g,'Math.log10')
+      .replace(/ln/g,'Math.log')
+      .replace(/abs/g,'Math.abs')
+      .replace(/π/g, Math.PI)
+      .replace(/\be\b/g, Math.E);
+    fn = new Function('x', '"use strict"; return ' + safe);
+    fn(0); // test
+  } catch(e) {
+    ctx.fillStyle = 'rgba(239,68,68,0.8)';
+    ctx.font = '14px Outfit';
+    ctx.fillText('Invalid function', 20, 40);
+    return;
+  }
+
+  const W = cw, H = ch;
+  const pad = 36;
+  const pw = W - pad*2, ph = H - pad*2;
+
+  // Sample y values
+  const steps = pw * 2;
+  const ys = [];
+  for (let i=0; i<=steps; i++) {
+    const x = xMin + (xMax-xMin)*(i/steps);
+    try { const y=fn(x); ys.push(isFinite(y)?y:null); }
+    catch(e) { ys.push(null); }
+  }
+  const validYs = ys.filter(v=>v!==null);
+  if (!validYs.length) return;
+  let yMin = Math.min(...validYs), yMax = Math.max(...validYs);
+  if (yMin===yMax) { yMin-=1; yMax+=1; }
+  const yPad = (yMax-yMin)*0.08;
+  yMin -= yPad; yMax += yPad;
+
+  const toX = x => pad + ((x-xMin)/(xMax-xMin))*pw;
+  const toY = y => pad + ph - ((y-yMin)/(yMax-yMin))*ph;
+
+  // Clear
+  ctx.clearRect(0,0,W,H);
+
+  // Grid
+  ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+  ctx.lineWidth = 1;
+  const gx = 5, gy = 5;
+  for (let i=0; i<=gx; i++) {
+    const x = pad + pw*i/gx;
+    ctx.beginPath(); ctx.moveTo(x,pad); ctx.lineTo(x,pad+ph); ctx.stroke();
+  }
+  for (let i=0; i<=gy; i++) {
+    const y = pad + ph*i/gy;
+    ctx.beginPath(); ctx.moveTo(pad,y); ctx.lineTo(pad+pw,y); ctx.stroke();
+  }
+
+  // Axes
+  ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+  ctx.lineWidth = 1.5;
+  // x-axis
+  if (yMin <= 0 && yMax >= 0) {
+    const ay = toY(0);
+    ctx.beginPath(); ctx.moveTo(pad,ay); ctx.lineTo(pad+pw,ay); ctx.stroke();
+  }
+  // y-axis
+  if (xMin <= 0 && xMax >= 0) {
+    const ax = toX(0);
+    ctx.beginPath(); ctx.moveTo(ax,pad); ctx.lineTo(ax,pad+ph); ctx.stroke();
+  }
+
+  // Axis labels
+  ctx.fillStyle = 'rgba(255,255,255,0.3)';
+  ctx.font = '10px DM Mono';
+  ctx.textAlign = 'center';
+  for (let i=0; i<=gx; i++) {
+    const xv = xMin+(xMax-xMin)*i/gx;
+    ctx.fillText(xv.toFixed(1), pad+pw*i/gx, pad+ph+16);
+  }
+  ctx.textAlign = 'right';
+  for (let i=0; i<=gy; i++) {
+    const yv = yMax-(yMax-yMin)*i/gy;
+    ctx.fillText(yv.toFixed(1), pad-6, pad+ph*i/gy+4);
+  }
+
+  // Curve gradient
+  const grad = ctx.createLinearGradient(0,0,W,0);
+  grad.addColorStop(0, '#7c3aed');
+  grad.addColorStop(0.5, '#2563eb');
+  grad.addColorStop(1, '#06b6d4');
+
+  // Glow
+  ctx.shadowColor = '#7c3aed';
+  ctx.shadowBlur = 12;
+
+  ctx.beginPath();
+  ctx.strokeStyle = grad;
+  ctx.lineWidth = 2.5;
+  ctx.lineJoin = 'round';
+  let drawing = false;
+  for (let i=0; i<=steps; i++) {
+    const x = xMin+(xMax-xMin)*(i/steps);
+    const y = ys[i];
+    if (y===null) { drawing=false; continue; }
+    const px = toX(x), py = toY(y);
+    if (!drawing) { ctx.moveTo(px,py); drawing=true; }
+    else ctx.lineTo(px,py);
+  }
+  ctx.stroke();
+  ctx.shadowBlur = 0;
+
+  // Fill under curve
+  ctx.globalAlpha = 0.08;
+  const baseY = toY(Math.max(0, yMin));
+  ctx.beginPath();
+  drawing = false;
+  let firstX = pad, lastX = pad+pw;
+  for (let i=0; i<=steps; i++) {
+    const x = xMin+(xMax-xMin)*(i/steps);
+    const y = ys[i];
+    if (y===null) { drawing=false; continue; }
+    const px = toX(x), py = toY(y);
+    if (!drawing) { ctx.moveTo(px,baseY); ctx.lineTo(px,py); firstX=px; drawing=true; }
+    else { ctx.lineTo(px,py); lastX=px; }
+  }
+  ctx.lineTo(lastX, baseY);
+  ctx.closePath();
+  ctx.fillStyle = '#7c3aed';
+  ctx.fill();
+  ctx.globalAlpha = 1;
+}
+
+// ══════════════════════════════════════
+//  INIT
+// ══════════════════════════════════════
+renderHistory();
+setTimeout(() => {
+  plotGraph();
+}, 300);
+
+window.addEventListener('resize', () => {
+  setTimeout(plotGraph, 100);
+});
+</script>
+</body>
+</html>
